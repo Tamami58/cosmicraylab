@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Galactic Cosmic Ray Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        /* UI Overlay Styles */
+        #ui-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            background: rgba(10, 15, 30, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(100, 200, 255, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+            user-select: none;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        /* Scrollbar for UI */
+        #ui-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        #ui-container::-webkit-scrollbar-thumb {
+            background: #334;
+            border-radius: 3px;
+        }
+
+        h1 {
+            font-size: 16px;
+            margin: 0 0 15px 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #00ffff;
+            text-align: center;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+            padding-bottom: 10px;
+        }
+
+        .section-title {
+            font-size: 12px;
+            color: #00ffff;
+            margin-top: 15px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-left: 2px solid #00ffff;
+            padding-left: 8px;
+        }
+
+        .control-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #ccc;
+            margin-bottom: 4px;
+        }
+
+        .value-display {
+            color: #fff;
+            font-weight: bold;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 11px;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            outline: none;
+            opacity: 0.8;
+            transition: opacity .2s;
+        }
+        input[type="range"]:hover { opacity: 1; }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #00ffff;
+            cursor: pointer;
+            box-shadow: 0 0 10px #00ffff;
+        }
+
+        select {
+            width: 100%;
+            background: #1a1f2e;
+            color: #fff;
+            border: 1px solid #445;
+            padding: 5px;
+            border-radius: 4px;
+            font-size: 12px;
+            outline: none;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-top: 5px;
+        }
+        .checkbox-group input {
+            margin-right: 8px;
+        }
+
+        .info {
+            font-size: 10px;
+            color: #889;
+            margin-top: 15px;
+            text-align: center;
+            line-height: 1.4;
+            border-top: 1px solid #334;
+            padding-top: 10px;
+        }
+
+        /* Loading Overlay */
+        #loader {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #00ffff;
+            font-size: 20px;
+            z-index: 999;
+            transition: opacity 0.8s ease-out;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loader">Initializing Galaxy Simulation...</div>
+
+    <div id="ui-container">
+        <h1>Cosmic Ray Lab</h1>
+        
+        <div class="section-title">Galaxy Structure</div>
+        <div class="control-group">
+            <label>Model</label>
+            <select id="galaxy-model">
+                <option value="spiral">Spiral (2-Arm)</option>
+                <option value="barred" selected>Barred Spiral (Milky Way-like)</option>
+            </select>
+        </div>
+
+        <div class="section-title">Source Configuration</div>
+        <div class="control-group">
+            <label>Distance from Center <span id="val-radius" class="value-display">5.0 kpc</span></label>
+            <input type="range" id="radius-slider" min="0" max="100" value="40">
+        </div>
+        <div class="control-group">
+            <label>Galactic Longitude <span id="val-angle" class="value-display">0°</span></label>
+            <input type="range" id="angle-slider" min="0" max="360" value="0">
+        </div>
+
+        <div class="section-title">Particle Properties</div>
+        <div class="control-group">
+            <!-- Logarithmic Scale for Energy -->
+            <label>Energy <span id="val-energy" class="value-display">1 PeV</span></label>
+            <input type="range" id="energy-slider" min="9" max="21" step="0.1" value="15.0">
+        </div>
+        
+        <div class="section-title">Magnetic Field</div>
+        <div class="control-group">
+            <label>Structure Model</label>
+            <select id="mag-model">
+                <option value="ass" selected>ASS (Axisymmetric)</option>
+                <option value="bss">BSS (Bisymmetric)</option>
+                <option value="ring">Ring Field</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Field Strength (Avg) <span id="val-mag" class="value-display">3.0 μG</span></label>
+            <input type="range" id="mag-slider" min="0.1" max="10" step="0.1" value="3.0">
+        </div>
+        <div class="control-group">
+            <label>Disk Turbulence (Base) <span id="val-scatter" class="value-display">40%</span></label>
+            <input type="range" id="scatter-slider" min="0" max="1" step="0.05" value="0.4">
+        </div>
+
+        <div class="control-group checkbox-group">
+            <input type="checkbox" id="show-field">
+            <label for="show-field" style="margin:0; cursor:pointer;">Show Magnetic Field Vectors</label>
+        </div>
+
+        <div class="info">
+            <strong>Propagation Model:</strong><br>
+            Disk: High diffusion (Trapped).<br>
+            Halo: Low diffusion (Free escape).<br>
+            Sun location marked in yellow.<br>
+            <i>Note: Trajectories are time-scaled for visualization.</i>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <!-- Import Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // --- Constants & Config ---
+        // Simulation Scale: 1 unit approx 0.15 kpc (Galaxy Radius ~ 15kpc = 100 units)
+        const SIM_SCALE_KPC = 0.15; 
+        
+        const config = {
+            galaxyModel: 'barred', // 'spiral', 'barred'
+            magModel: 'ass',       // 'ass', 'bss', 'ring'
+            sourceRadius: 40,      // 0-100 units
+            sourceAngle: 0,        // degrees
+            energyLog: 15.0,       // log10(eV) -> 9.0 to 21.0
+            magStrength: 3.0,      // microGauss
+            scattering: 0.4,       // 0.0 - 1.0 (Increased default for visibility)
+            showField: false,
+            galaxyRadius: 100,
+            simSpeed: 1.0
+        };
+
+        const state = {
+            time: 0,
+            particles: []
+        };
+
+        // --- Scene Init ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x050510, 0.0015);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.set(0, 120, 160);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setClearColor(0x020205);
+        container.appendChild(renderer.domElement);
+
+        let controls;
+        if (THREE.OrbitControls) {
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.autoRotate = true;
+            controls.autoRotateSpeed = 0.2;
+        }
+
+        // --- Galaxy Geometry ---
+        let galaxyPoints = null;
+
+        function createGalaxy() {
+            if(galaxyPoints) scene.remove(galaxyPoints);
+
+            const starCount = 20000;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(starCount * 3);
+            const colors = new Float32Array(starCount * 3);
+
+            // Colors
+            const colorCenter = new THREE.Color(0xffddaa); // Yellow/White bulge
+            const colorArm = new THREE.Color(0x88bbff);    // Blue arms
+            const colorDust = new THREE.Color(0xaa4444);   // Reddish dust
+
+            for (let i = 0; i < starCount; i++) {
+                const i3 = i * 3;
+                let r, theta, y;
+
+                // Model Logic
+                if (config.galaxyModel === 'barred') {
+                    // Barred Spiral (Milky Way-like)
+                    // Core/Bar
+                    if (Math.random() < 0.2) {
+                        // Bar area: Elongated box/cylinder
+                        const barLen = 30;
+                        const t = (Math.random() - 0.5) * 2; // -1 to 1
+                        r = t * barLen * 0.5; // along bar
+                        // Bar is rotated slightly relative to grid? Let's align bar to X axis roughly
+                        // Add thickness
+                        const width = 6 * Math.random();
+                        const x = r;
+                        const z = (Math.random()-0.5) * width;
+                        
+                        // Rotate bar slightly
+                        const barAngle = Math.PI / 4;
+                        const xr = x * Math.cos(barAngle) - z * Math.sin(barAngle);
+                        const zr = x * Math.sin(barAngle) + z * Math.cos(barAngle);
+                        
+                        positions[i3] = xr;
+                        positions[i3+1] = (Math.random()-0.5) * 4 * Math.exp(-r*r/200);
+                        positions[i3+2] = zr;
+
+                        // Color
+                        const c = colorCenter.clone();
+                        colors[i3] = c.r; colors[i3+1] = c.g; colors[i3+2] = c.b;
+                        continue;
+                    } 
+                    
+                    // Arms (4 arms for MW)
+                    const arms = 4;
+                    const armIndex = i % arms;
+                    const armOffset = (armIndex / arms) * Math.PI * 2;
+                    
+                    r = 20 + Math.random() * (config.galaxyRadius - 20); // Start outside bar
+                    const logSpiral = Math.log(r/20) * 3; // Tightness
+                    theta = armOffset + logSpiral;
+
+                } else {
+                    // Simple Spiral
+                    const arms = 2;
+                    const armIndex = i % arms;
+                    const armOffset = (armIndex / arms) * Math.PI * 2;
+                    
+                    r = Math.random() * config.galaxyRadius;
+                    const spin = r * 0.05;
+                    theta = armOffset + spin;
+                }
+
+                // Add randomness (scatter stars around arms)
+                const spread = (r / config.galaxyRadius) * 20 + 2;
+                const dx = (Math.random()-0.5) * spread;
+                const dz = (Math.random()-0.5) * spread;
+
+                // Vertical thickness
+                const diskHeight = 2 + (r/config.galaxyRadius)*4; 
+                y = (Math.random()-0.5) * diskHeight * Math.exp(-r*r / (config.galaxyRadius*config.galaxyRadius*0.5));
+
+                // Convert polar to cartesian
+                const x = r * Math.cos(theta);
+                const z = r * Math.sin(theta);
+
+                positions[i3] = x + dx;
+                positions[i3+1] = y;
+                positions[i3+2] = z + dz;
+
+                // Color mixing
+                const mixRatio = r / config.galaxyRadius;
+                const baseColor = colorCenter.clone().lerp(colorArm, mixRatio);
+                
+                // Dust lanes?
+                if (Math.random() < 0.1) baseColor.lerp(colorDust, 0.5);
+
+                colors[i3] = baseColor.r;
+                colors[i3+1] = baseColor.g;
+                colors[i3+2] = baseColor.b;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: 0.7,
+                vertexColors: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            galaxyPoints = new THREE.Points(geometry, material);
+            scene.add(galaxyPoints);
+        }
+
+        // --- Solar System Marker ---
+        const sunGroup = new THREE.Group();
+        scene.add(sunGroup);
+
+        function createSolarSystemMarker() {
+            // Solar system is approx 8kpc from center. 
+            // In our scale (R_gal ~ 15kpc = 100 units), 8kpc is approx 53 units.
+            const sunDist = 53; 
+            
+            const sunGeo = new THREE.SphereGeometry(1.5, 16, 16);
+            const sunMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+            const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+            
+            // Text Sprite
+            const canvas = document.createElement('canvas');
+            canvas.width = 128; canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.font = 'Bold 24px Arial';
+            ctx.fillStyle = 'yellow';
+            ctx.textAlign = 'center';
+            ctx.fillText('Sun', 64, 40);
+            
+            const tex = new THREE.CanvasTexture(canvas);
+            const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+            const sprite = new THREE.Sprite(spriteMat);
+            sprite.scale.set(10, 5, 1);
+            sprite.position.y = 3;
+
+            sunGroup.add(sunMesh);
+            sunGroup.add(sprite);
+            sunGroup.position.set(sunDist, 0, 0); // Place on X axis
+        }
+
+        // --- Magnetic Field Logic ---
+        
+        let fieldArrows = new THREE.Group();
+        scene.add(fieldArrows);
+        fieldArrows.visible = false;
+
+        function getMagneticFieldVector(pos) {
+            // Returns B vector at position pos (Vector3)
+            // Magnitude scaled by config.magStrength
+            
+            const r = Math.sqrt(pos.x*pos.x + pos.z*pos.z);
+            if (r < 1) return new THREE.Vector3(0,1,0); // Singularity check
+
+            let dir = new THREE.Vector3();
+            const angle = Math.atan2(pos.z, pos.x);
+
+            // Logarithmic spiral pitch angle approx 10-15 degrees for galaxies
+            const pitch = 15 * (Math.PI / 180); 
+            
+            // Tangent direction (circular)
+            const tanX = -Math.sin(angle);
+            const tanZ = Math.cos(angle);
+
+            // Radial direction
+            const radX = Math.cos(angle);
+            const radZ = Math.sin(angle);
+
+            // Spiral direction components
+            // B follows spiral arms: mix tangent and radial
+            const bx = tanX * Math.cos(pitch) + radX * Math.sin(pitch);
+            const bz = tanZ * Math.cos(pitch) + radZ * Math.sin(pitch);
+            
+            dir.set(bx, 0, bz).normalize();
+
+            // Field Reversals based on Model
+            if (config.magModel === 'bss') {
+                // Bisymmetric Spiral: Field direction flips based on azimuthal angle
+                // Simple BSS: cos(theta - log(r))
+                const phase = angle - Math.log(r/10); 
+                if (Math.cos(phase) < 0) dir.negate();
+            } else if (config.magModel === 'ring') {
+                // Purely azimuthal
+                dir.set(tanX, 0, tanZ);
+            }
+            // ASS (Axisymmetric) is default (no flip)
+
+            // Vertical halo component (dipole-like away from disk)
+            const zFactor = Math.abs(pos.y);
+            if (zFactor > 5) {
+                dir.y = Math.sign(pos.y) * 0.5;
+                dir.normalize();
+            }
+
+            // Strength falloff
+            // B ~ exp(-R/R_scale) * exp(-|z|/z_scale)
+            const strength = config.magStrength * Math.exp(-r / 60) * Math.exp(-Math.abs(pos.y) / 10);
+
+            return dir.multiplyScalar(strength);
+        }
+
+        function updateFieldVis() {
+            // Rebuild arrow helper grid
+            fieldArrows.clear();
+            if (!config.showField) return;
+
+            const step = 15;
+            const range = 80;
+            const arrowLen = 8;
+            const color = 0x00ff88;
+
+            for(let x = -range; x <= range; x += step) {
+                for(let z = -range; z <= range; z += step) {
+                    const pos = new THREE.Vector3(x, 0, z);
+                    const b = getMagneticFieldVector(pos);
+                    const len = b.length();
+                    
+                    if(len > 0.1) {
+                        const dir = b.clone().normalize();
+                        const arrow = new THREE.ArrowHelper(dir, pos, arrowLen * (len/config.magStrength) + 2, color);
+                        fieldArrows.add(arrow);
+                    }
+                }
+            }
+        }
+
+        // --- Particle System (Cosmic Rays) ---
+        
+        // We simulate N particles using a trail system
+        const RAY_COUNT = 400;
+        const TRAIL_LEN = 50;
+        
+        const trailsGeo = new THREE.BufferGeometry();
+        const positions = new Float32Array(RAY_COUNT * TRAIL_LEN * 2 * 3); // 2 verts per segment
+        const colors = new Float32Array(RAY_COUNT * TRAIL_LEN * 2 * 3);
+        
+        trailsGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        trailsGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        
+        const trailsMat = new THREE.LineBasicMaterial({ 
+            vertexColors: true, 
+            transparent: true, 
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending 
+        });
+        
+        const trailMesh = new THREE.LineSegments(trailsGeo, trailsMat);
+        scene.add(trailMesh);
+
+        // State for rays
+        const rays = [];
+        for(let i=0; i<RAY_COUNT; i++) {
+            rays.push({
+                pos: new THREE.Vector3(),
+                vel: new THREE.Vector3(),
+                history: Array(TRAIL_LEN + 1).fill().map(() => new THREE.Vector3()),
+                life: 0,
+                color: new THREE.Color()
+            });
+        }
+
+        // Visual Emitter
+        const emitterMesh = new THREE.Mesh(
+            new THREE.SphereGeometry(2),
+            new THREE.MeshBasicMaterial({ color: 0xff00ff, wireframe: true })
+        );
+        scene.add(emitterMesh);
+
+        function resetRay(ray) {
+            // Source Position
+            const r = config.sourceRadius;
+            const theta = (config.sourceAngle * Math.PI) / 180;
+            const ex = r * Math.cos(theta);
+            const ez = r * Math.sin(theta);
+            
+            emitterMesh.position.set(ex, 0, ez);
+            
+            // Random start near emitter
+            ray.pos.set(ex + (Math.random()-0.5), (Math.random()-0.5), ez + (Math.random()-0.5));
+            
+            // Initial Velocity: Isotropic
+            // Speed is purely visual in this simulation, 
+            // but trajectory curvature depends on Physics Energy.
+            const speed = 2.0; 
+            ray.vel.set(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize().multiplyScalar(speed);
+            
+            ray.life = 1.0;
+            
+            // Color based on energy (Red=Low, Blue=High, Purple=Ultra)
+            // Log 9(1GeV) to 21(1ZeV)
+            const t = (config.energyLog - 9) / 12; 
+            ray.color.setHSL(0.7 - t*0.7, 1.0, 0.5); // Red->Blue->Violet map inverted? 
+            // Let's do: Low(9) = Red/Yellow, High(21) = Cyan/Blue
+            ray.color.setHSL(0.0 + t * 0.6, 1.0, 0.6);
+
+            // Reset history
+            for(let p of ray.history) p.copy(ray.pos);
+        }
+
+        const tempVec = new THREE.Vector3();
+
+        function stepPhysics() {
+            const dt = 0.5 * config.simSpeed;
+            
+            // Physical Scaling Factor
+            const energyeV = Math.pow(10, config.energyLog);
+            
+            // Factor = BaseStrength * 10^(16 - energyLog)
+            let physicsFactor = Math.pow(10, 16.5 - config.energyLog);
+            
+            // Cap factor to prevent numerical explosion at low energies
+            if (physicsFactor > 50) physicsFactor = 50; 
+
+            // Scale height for diffusive disk (approx match visual thickness)
+            const DISK_SCALE_HEIGHT = 8.0;
+
+            for (let i = 0; i < RAY_COUNT; i++) {
+                const ray = rays[i];
+                if (ray.life <= 0) resetRay(ray);
+
+                const B = getMagneticFieldVector(ray.pos); // Includes strength config
+                
+                // Lorentz Force: F = v x B
+                tempVec.crossVectors(ray.vel, B).multiplyScalar(physicsFactor * dt * 0.1);
+                ray.vel.add(tempVec);
+                
+                // --- Updated Diffusion Logic ---
+                // Scattering is high in the disk (turbulence) and low in the halo (free escape)
+                // Probability decays exponentially with height |y|
+                const distZ = Math.abs(ray.pos.y);
+                const localScattering = config.scattering * Math.exp(-distZ / DISK_SCALE_HEIGHT);
+
+                if (Math.random() < localScattering) {
+                    // Random kick (Diffusion)
+                    ray.vel.x += (Math.random()-0.5) * 0.5;
+                    ray.vel.y += (Math.random()-0.5) * 0.5;
+                    ray.vel.z += (Math.random()-0.5) * 0.5;
+                }
+                
+                // Keep speed constant-ish
+                ray.vel.setLength(2.0); 
+
+                // Move
+                ray.pos.addScaledVector(ray.vel, dt);
+                
+                // Update history
+                ray.history.pop();
+                ray.history.unshift(ray.pos.clone());
+
+                // Decay
+                const dSq = ray.pos.x*ray.pos.x + ray.pos.z*ray.pos.z;
+                if (dSq > 120*120 || Math.abs(ray.pos.y) > 40) {
+                    ray.life -= 0.05;
+                } else {
+                    ray.life -= 0.005;
+                }
+            }
+        }
+
+        function updateTrails() {
+            const posArr = trailsGeo.attributes.position.array;
+            const colArr = trailsGeo.attributes.color.array;
+
+            for (let i = 0; i < RAY_COUNT; i++) {
+                const ray = rays[i];
+                const base = i * TRAIL_LEN * 6;
+
+                for (let j = 0; j < TRAIL_LEN; j++) {
+                    const idx = base + j * 6;
+                    const p1 = ray.history[j];
+                    const p2 = ray.history[j+1];
+
+                    posArr[idx] = p1.x; posArr[idx+1] = p1.y; posArr[idx+2] = p1.z;
+                    posArr[idx+3] = p2.x; posArr[idx+4] = p2.y; posArr[idx+5] = p2.z;
+
+                    // Fade tail
+                    const op1 = ray.life * (1 - j/TRAIL_LEN);
+                    const op2 = ray.life * (1 - (j+1)/TRAIL_LEN);
+
+                    colArr[idx]   = ray.color.r * op1; 
+                    colArr[idx+1] = ray.color.g * op1; 
+                    colArr[idx+2] = ray.color.b * op1;
+                    
+                    colArr[idx+3] = ray.color.r * op2; 
+                    colArr[idx+4] = ray.color.g * op2; 
+                    colArr[idx+5] = ray.color.b * op2;
+                }
+            }
+            trailsGeo.attributes.position.needsUpdate = true;
+            trailsGeo.attributes.color.needsUpdate = true;
+        }
+
+        // --- Helpers for formatting ---
+        function formatEnergy(logE) {
+            // 9 = 1 GeV
+            // 12 = 1 TeV
+            // 15 = 1 PeV
+            // 18 = 1 EeV
+            // 21 = 1 ZeV
+            const val = Math.pow(10, logE);
+            if (logE >= 21) return (val/1e21).toFixed(1) + " ZeV";
+            if (logE >= 18) return (val/1e18).toFixed(1) + " EeV";
+            if (logE >= 15) return (val/1e15).toFixed(1) + " PeV";
+            if (logE >= 12) return (val/1e12).toFixed(1) + " TeV";
+            if (logE >= 9) return (val/1e9).toFixed(1) + " GeV";
+            return val.toExponential(1) + " eV";
+        }
+
+        // --- UI Binding ---
+        function initUI() {
+            // Galaxy Model
+            document.getElementById('galaxy-model').addEventListener('change', (e) => {
+                config.galaxyModel = e.target.value;
+                createGalaxy();
+            });
+
+            // Source Radius
+            const rSlider = document.getElementById('radius-slider');
+            rSlider.addEventListener('input', (e) => {
+                config.sourceRadius = parseFloat(e.target.value);
+                const kpc = (config.sourceRadius * SIM_SCALE_KPC).toFixed(1);
+                document.getElementById('val-radius').innerText = `${kpc} kpc`;
+            });
+
+            // Angle
+            const aSlider = document.getElementById('angle-slider');
+            aSlider.addEventListener('input', (e) => {
+                config.sourceAngle = parseFloat(e.target.value);
+                document.getElementById('val-angle').innerText = config.sourceAngle + "°";
+            });
+
+            // Energy
+            const eSlider = document.getElementById('energy-slider');
+            eSlider.addEventListener('input', (e) => {
+                config.energyLog = parseFloat(e.target.value);
+                document.getElementById('val-energy').innerText = formatEnergy(config.energyLog);
+                // Reset rays to show change immediately
+                // rays.forEach(r => r.life = 0);
+            });
+
+            // Mag Model
+            document.getElementById('mag-model').addEventListener('change', (e) => {
+                config.magModel = e.target.value;
+                if(config.showField) updateFieldVis();
+            });
+
+            // Mag Strength
+            const mSlider = document.getElementById('mag-slider');
+            mSlider.addEventListener('input', (e) => {
+                config.magStrength = parseFloat(e.target.value);
+                document.getElementById('val-mag').innerText = config.magStrength + " μG";
+                if(config.showField) updateFieldVis();
+            });
+
+            // Scatter
+            const sSlider = document.getElementById('scatter-slider');
+            sSlider.addEventListener('input', (e) => {
+                config.scattering = parseFloat(e.target.value);
+                document.getElementById('val-scatter').innerText = Math.round(config.scattering*100) + "%";
+            });
+
+            // Show Field
+            const cbField = document.getElementById('show-field');
+            cbField.addEventListener('change', (e) => {
+                config.showField = e.target.checked;
+                fieldArrows.visible = config.showField;
+                if(config.showField) updateFieldVis();
+            });
+        }
+
+        // --- Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            stepPhysics();
+            updateTrails();
+            
+            if (galaxyPoints) galaxyPoints.rotation.y -= 0.0003;
+            sunGroup.rotation.y -= 0.0003; // Orbit simulation (simplified)
+
+            if (controls) controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Boot
+        initUI();
+        createGalaxy();
+        createSolarSystemMarker();
+        
+        window.onload = () => {
+            const loader = document.getElementById('loader');
+            if(loader) {
+                loader.style.opacity = 0;
+                setTimeout(()=>loader.remove(), 800);
+            }
+            animate();
+        };
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+</html>
